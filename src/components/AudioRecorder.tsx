@@ -1,6 +1,7 @@
 'use client';
 
 import { SERVER_BASE_URL } from "@/constants";
+import { merge } from "@/libs/array";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface SongAPIResponse {
@@ -28,8 +29,9 @@ function AudioRecorder() {
     const canvas = canvasRef.current;
     const analyser = analyserRef.current;
 
-    const dataArray = new Uint8Array(BUFFER_LENGTH);
-
+    const newDataArray = new Uint8Array(BUFFER_LENGTH);
+    const dataArray = merge(newDataArray, doubleDataArray, false);
+    
     const ctx = canvas.getContext('2d');
     if (ctx === null) return;
 
