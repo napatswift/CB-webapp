@@ -46,12 +46,32 @@ describe("merge function", () => {
     expect(result).toEqual(expectedArray);
   });
 
+  it("should merge Float32Array b into Float32Array a in ascending order and calculate the mean of every two elements in array a", () => {
+    const targetArray = new Float32Array([1, 2, 3, 4, 5, 6, 7, 8]);
+    const sourceArray = new Float32Array([5, 6, 7, 8]);
+    const expectedArray = new Float32Array([
+      (1 + 2) / 2,
+      (3 + 4) / 2,
+      (5 + 6) / 2,
+      (7 + 8) / 2,
+      5,
+      6,
+      7,
+      8,
+    ]);
+
+    const result = merge(targetArray, sourceArray, false);
+
+    expect(result).toHaveLength(8);
+    expect(result).toEqual(expectedArray);
+  });
+
   it("should throw an error if the input arrays are invalid", () => {
     const targetArray = [1, 2, 3, 4];
-    const sourceArray = [5, 6, 7];
+    const sourceArray = [5, 6, 7, 8];
 
     expect(() => merge(targetArray, sourceArray, false)).toThrowError(
-      "Invalid input"
+      "Array a must have twice as many elements as array b"
     );
   });
 
@@ -60,7 +80,7 @@ describe("merge function", () => {
     const sourceArray = [5, 6, 7];
 
     expect(() => merge(targetArray, sourceArray, false)).toThrowError(
-      "Invalid input"
+      "Array b must have an even number of elements"
     );
   });
 });

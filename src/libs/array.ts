@@ -11,8 +11,19 @@ export const merge = <T extends number[] | Float32Array | Uint8Array>(
   b: T,
   isEmpty: boolean
 ): T => {
-  if (a.length % 2 !== 0 || b.length % 2 !== 0 || b.length !== a.length / 2) {
-    throw new Error("Invalid input");
+  if (a.length % 2 !== 0) {
+    throw new Error("Array a must have an even number of elements");
+  }
+
+  if (b.length % 2 !== 0) {
+    throw new Error("Array b must have an even number of elements");
+  }
+
+  if (a.length / 2 !== b.length) {
+    throw new Error(
+      "Array a must have twice as many elements as array b" +
+        `(${a.length / 2} !== ${b.length})`
+    );
   }
 
   const result: number[] = [];
