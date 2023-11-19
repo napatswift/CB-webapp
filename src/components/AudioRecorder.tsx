@@ -3,6 +3,8 @@
 import { SERVER_BASE_URL } from "@/constants";
 import { merge } from "@/libs/array";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import SongList from "./SongList";
+import { fromJSON } from "postcss";
 
 interface SongAPIResponse {
   results: {
@@ -15,7 +17,7 @@ const FFT_SIZE = 2048;
 const BUFFER_LENGTH = 1024;
 
 function AudioRecorder() {
-  const [songs, setSongs] = useState<string[]>([]);
+  const [songs, setSongs] = useState<{name: string, score: number}[]>([]);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -102,7 +104,7 @@ function AudioRecorder() {
         mediaRecorder.current.stop();
         mediaRecorder.current.start();
         currentIdx = (currentIdx + 1) % 2;
-      }, 4500);
+      }, 5000);
 
       mediaRecorder.current.onstop = (e) => {
         const idx = currentIdx;
@@ -115,16 +117,17 @@ function AudioRecorder() {
         const form = new FormData();
 
         form.append("audio", blob, "audio.webm");
+        form.append("timestamp", new Date().toISOString());
 
         fetch(SERVER_BASE_URL + "/api/fp/", {
           method: "POST",
           body: form,
         })
-          .then((data) => data.json())
+        .then((data) => data.json())
           .then((data: SongAPIResponse) => {
             setSongs(
               data.results.map(
-                (result) => `'${result.song}' of ${result.score}`
+                (result) => ({ name: result.song, score: result.score })
               )
             );
           })
@@ -182,13 +185,9 @@ function AudioRecorder() {
   }, []);
 
   return (
-    <div>
-      <div className=" absolute">
-        <ul>
-          {songs.map((song, idx) => (
-            <li key={idx}>{song}</li>
-          ))}
-        </ul>
+    <div className=" relative w-full">
+      <div className="absolute">
+      <SongList songs={songs} />
       </div>
       <div style={{ width: "100vw" }}>
         <canvas ref={canvasRef}></canvas>
