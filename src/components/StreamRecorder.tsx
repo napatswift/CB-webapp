@@ -112,6 +112,9 @@ function StreamAudioRecorder() {
   const [lyrics, setLyrics] = useState<LyricLine[]>([]);
   const [possibleSongs, setPossibleSongs] = useState<{ name: string }[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [recordState, setRecordState] = useState<"inactive" | "active">(
+    "inactive"
+  );
   const audioChunks = useRef<Blob[]>([]);
   const startRecording = useCallback(() => {
     if (mediaRecorder.current !== null) return;
@@ -128,37 +131,44 @@ function StreamAudioRecorder() {
       mediaRecorder.current.onstop = (e) => {
         mediaRecorder.current = null;
         audioChunks.current = [];
+        setRecordState("inactive");
       };
 
-      mediaRecorder.current.ondataavailable = (e) => {
-        audioChunks.current.push(e.data);
-
-        if (audioChunks.current.length < 4) return;
-        speechToTextHandler(
-          [
-            audioChunks.current[0],
-            ...audioChunks.current.slice(audioChunks.current.length - 3),
-          ],
-          2
-        ).then((resp) => {
-          if (resp.error) {
-            setErrorMessage(() => resp.error || "");
-            return;
-          }
-          if (resp.data.text) {
-            setLyrics((prev) => [
-              ...prev,
-              { line: resp.data.text, timestamp: resp.data.timestamp },
-            ]);
-          }
-          if (resp.data.posibleSongs) {
-            setPossibleSongs(resp.data.posibleSongs);
-          }
-        });
-        audioChunks.current.splice(1, 2); // remove 2 items from index 1
-      };
+      setRecordState("active");
     });
-  }, [setLyrics, setErrorMessage]);
+  }, [setRecordState]);
+
+  useEffect(() => {
+    if (mediaRecorder.current === null || recordState === "inactive") return;
+
+    mediaRecorder.current.ondataavailable = (e) => {
+      audioChunks.current.push(e.data);
+
+      if (audioChunks.current.length < 4) return;
+      speechToTextHandler(
+        [
+          audioChunks.current[0],
+          ...audioChunks.current.slice(audioChunks.current.length - 3),
+        ],
+        2
+      ).then((resp) => {
+        if (resp.error) {
+          setErrorMessage(() => resp.error || "");
+          return;
+        }
+        if (resp.data.text) {
+          setLyrics((prev) => [
+            ...prev,
+            { line: resp.data.text, timestamp: resp.data.timestamp },
+          ]);
+        }
+        if (resp.data.posibleSongs) {
+          setPossibleSongs(resp.data.posibleSongs);
+        }
+      });
+      audioChunks.current.splice(1, 2); // remove 2 items from index 1
+    };
+  }, [recordState]);
 
   useEffect(() => {
     console.log("lyrics", lyrics);
