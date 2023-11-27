@@ -17,6 +17,11 @@ interface AudioFileCheckerResponse {
   };
 }
 
+interface LyricLine {
+  line: string;
+  timestamp: string;
+}
+
 const SongList = styled.div`
   display: flex;
   gap: 0.5rem;
@@ -104,9 +109,7 @@ async function speechToTextHandler(
 
 function StreamAudioRecorder() {
   const mediaRecorder = useRef<MediaRecorder | null>(null);
-  const [lyrics, setLyrics] = useState<{ line: string; timestamp: string }[]>(
-    []
-  );
+  const [lyrics, setLyrics] = useState<LyricLine[]>([]);
   const [possibleSongs, setPossibleSongs] = useState<{ name: string }[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const audioChunks = useRef<Blob[]>([]);
