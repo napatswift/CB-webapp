@@ -198,10 +198,10 @@ function StreamAudioRecorder() {
     return possibleSongs.map((song) => ({
       songId: song.id,
       node: (
-        <div className="flex-1 w-full">
+        <div className="flex flex-col flex-1 h-full overflow-hidden">
           <div>
             <p className="font-bold">
-              {song.name + ' '}
+              {song.name + " "}
               <button
                 className="text-sm text-blue-500 bg-blue-50 hover:bg-blue-100 p-1 rounded"
                 onClick={() =>
@@ -234,9 +234,12 @@ function StreamAudioRecorder() {
   }, [lyricPlayers, userSelectedSongId]);
 
   return (
-    <div>
-      <div>
-        <button className="p-2" onClick={startRecording}>
+    <div className="h-[100vh]  p-2 flex flex-col gap-2">
+      <div className="">
+        <button
+          className="p-2 bg-red-500 text-white rounded-xl"
+          onClick={startRecording}
+        >
           Start
         </button>
         <button className="p-2" onClick={stopRecording}>
@@ -246,18 +249,20 @@ function StreamAudioRecorder() {
           {errorMessage && <div className=" text-red-500">{errorMessage}</div>}
         </div>
       </div>
-      <SongOptions
-        songs={possibleSongs}
-        selectingSongId={userSelectedSongId}
-        setSongId={(songId) => {
-          setUserSelectedSongId(songId);
-        }}
-      />
-      <div>
-      <ASRLines lineList={lyrics} />
+      {possibleSongs.length > 0 && (
+        <SongOptions
+          songs={possibleSongs}
+          selectingSongId={userSelectedSongId}
+          setSongId={(songId) => {
+            setUserSelectedSongId(songId);
+          }}
+        />
+      )}
+      <div className="overflow-hidden">
+        {filteredLyricPlayers.length > 0 && filteredLyricPlayers[0].node}
       </div>
-      <div className="flex gap-2">
-        {filteredLyricPlayers.map((l) => l.node)}
+      <div>
+        <ASRLines lineList={lyrics} />
       </div>
     </div>
   );

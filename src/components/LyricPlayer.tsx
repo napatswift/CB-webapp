@@ -65,7 +65,7 @@ function LyricPlayer({ startAt, startTimeMsAt, lyrics }: LyricPlayerProps) {
   }, [currLyricLineIdx]);
 
   return (
-    <div ref={container} className="max-h-[25rem] overflow-scroll p-4">
+    <div ref={container} className="overflow-y-auto p-4 h-full">
       {lyrics.map((lyric, idx) => {
         const ref = idx === currLyricLineIdx ? activeLine : null;
         return (
