@@ -56,15 +56,16 @@ function LyricPlayer({ startAt, startTimeMsAt, lyrics }: LyricPlayerProps) {
       const activeLineRect = activeLine.current.getBoundingClientRect();
       const containerRect = container.current.getBoundingClientRect();
       const diff = activeLineRect.top - containerRect.top;
-      container.current.scrollTo({
-        top: diff - containerRect.height / 2,
+      activeLine.current.scrollIntoView({
         behavior: "smooth",
+        block: "center",
+        inline: "center",
       });
     }
   }, [currLyricLineIdx]);
 
   return (
-    <div ref={container} className=" max-h-[25rem] overflow-scroll p-4 border">
+    <div ref={container} className="max-h-[25rem] overflow-scroll p-4">
       {lyrics.map((lyric, idx) => {
         const ref = idx === currLyricLineIdx ? activeLine : null;
         return (

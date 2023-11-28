@@ -4,6 +4,7 @@ import { SERVER_BASE_URL } from "@/constants";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SongOptions from "./stream/SongOptions";
 import LyricPlayer from "./LyricPlayer";
+import ASRLines from "./ASRLines";
 
 interface AudioFileCheckerResponse {
   data: {
@@ -110,10 +111,16 @@ function StreamAudioRecorder() {
   const [userSelectedSongId, setUserSelectedSongId] = useState<
     string | undefined
   >();
+
+  const isLyricLocked = useRef<string | null>(null);
   const audioChunks = useRef<Blob[]>([]);
+
   const startRecording = useCallback(() => {
     if (mediaRecorder.current !== null) return;
     navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+      setUserSelectedSongId(undefined);
+      isLyricLocked.current = null;
+      setPossibleSongs([]); // reset possible songs
       setLyrics([]); // reset lyrics
       mediaRecorder.current = new MediaRecorder(stream, {
         mimeType: "audio/webm;codecs=opus",
@@ -141,26 +148,33 @@ function StreamAudioRecorder() {
 
       if (audioChunks.current.length < 4) return;
       const currChunk = audioChunks.current;
-      speechToTextHandler(
-        [currChunk[0], ...currChunk.slice(currChunk.length - 3)],
-        lyrics.slice(Math.max(0, lyrics.length - 5)),
-        2,
-        userSelectedSongId
-      ).then((resp) => {
-        if (resp.error) {
-          setErrorMessage(() => resp.error || "");
-          return;
-        }
-        if (resp.data.text) {
-          setLyrics((prev) => [
-            ...prev,
-            { line: resp.data.text, timestamp: resp.data.timestamp },
-          ]);
-        }
-        if (resp.data.posibleSongs && resp.data.posibleSongs.length) {
-          setPossibleSongs(resp.data.posibleSongs);
-        }
-      });
+      if (isLyricLocked.current === null) {
+        speechToTextHandler(
+          [currChunk[0], ...currChunk.slice(currChunk.length - 3)],
+          lyrics.slice(Math.max(0, lyrics.length - 5)),
+          2,
+          userSelectedSongId
+        ).then((resp) => {
+          if (resp.error) {
+            setErrorMessage(() => resp.error || "");
+            return;
+          }
+          if (resp.data.text) {
+            setLyrics((prev) => [
+              ...prev,
+              { line: resp.data.text, timestamp: resp.data.timestamp },
+            ]);
+          }
+          if (
+            resp.data.posibleSongs &&
+            resp.data.posibleSongs.length &&
+            mediaRecorder.current !== null &&
+            isLyricLocked.current === null
+          ) {
+            setPossibleSongs(resp.data.posibleSongs);
+          }
+        });
+      }
       audioChunks.current.splice(1, 2); // remove 2 items from index 1
     };
   }, [lyrics, recordState, userSelectedSongId]);
@@ -184,19 +198,38 @@ function StreamAudioRecorder() {
     return possibleSongs.map((song) => ({
       songId: song.id,
       node: (
-        <LyricPlayer
-          key={song.id}
-          startAt={song.time_stamp}
-          startTimeMsAt={song.current_time}
-          lyrics={song.lyric.sort((a, b) => a.start_time_ms - b.start_time_ms)}
-        />
+        <div className="flex-1 w-full">
+          <div>
+            <p className="font-bold">
+              {song.name + ' '}
+              <button
+                className="text-sm text-blue-500 bg-blue-50 hover:bg-blue-100 p-1 rounded"
+                onClick={() =>
+                  (isLyricLocked.current =
+                    isLyricLocked.current === song.id ? null : song.id)
+                }
+              >
+                lock
+              </button>
+            </p>
+          </div>
+          <LyricPlayer
+            key={song.id}
+            startAt={song.time_stamp}
+            startTimeMsAt={song.current_time}
+            lyrics={song.lyric.sort(
+              (a, b) => a.start_time_ms - b.start_time_ms
+            )}
+          />
+        </div>
       ),
     }));
   }, [possibleSongs]);
 
   const filteredLyricPlayers = useMemo(() => {
     return lyricPlayers.filter(
-      (lyricPlayer) => !userSelectedSongId || lyricPlayer.songId === userSelectedSongId
+      (lyricPlayer) =>
+        !userSelectedSongId || lyricPlayer.songId === userSelectedSongId
     );
   }, [lyricPlayers, userSelectedSongId]);
 
@@ -221,20 +254,9 @@ function StreamAudioRecorder() {
         }}
       />
       <div>
-        {lyrics
-          .sort((a, b) => {
-            if (a.timestamp < b.timestamp) return 1;
-            if (a.timestamp > b.timestamp) return -1;
-            return 0;
-          })
-          .slice(0, 5)
-          .map((lyric) => (
-            <div key={lyric.timestamp}>
-              <p>{lyric.line}</p>
-            </div>
-          ))}
+      <ASRLines lineList={lyrics} />
       </div>
-      <div className="grid grid-cols-2">
+      <div className="flex gap-2">
         {filteredLyricPlayers.map((l) => l.node)}
       </div>
     </div>

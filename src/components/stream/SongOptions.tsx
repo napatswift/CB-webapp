@@ -2,6 +2,7 @@ interface SongOptionsProps {
   songs: {
     name: string;
     id: string;
+    current_time: number;
   }[];
   selectingSongId?: string;
   setSongId: React.Dispatch<string | undefined>;
@@ -10,8 +11,11 @@ interface SongOptionsProps {
 function SongOptions({ songs, setSongId, selectingSongId }: SongOptionsProps) {
   return (
     <div>
-      {songs.map((song) => (
-        <button
+      {songs.map((song) => 
+      {
+        const time = new Date(song.current_time);
+        const timeString = `${time.getMinutes()}:${time.getSeconds()}`;
+        return <button
           key={song.id}
           onClick={() =>
             setSongId(song.id === selectingSongId ? undefined : song.id)
@@ -24,9 +28,9 @@ function SongOptions({ songs, setSongId, selectingSongId }: SongOptionsProps) {
             borderRadius: "0.5rem",
           }}
         >
-          {song.name}
-        </button>
-      ))}
+          {song.name} {timeString}
+        </button>}
+      )}
     </div>
   );
 }
