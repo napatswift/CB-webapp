@@ -3,6 +3,7 @@
 import { SERVER_BASE_URL } from "@/constants";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SongOptions from "./stream/SongOptions";
+import LyricPlayer from "./LyricPlayer";
 
 interface AudioFileCheckerResponse {
   data: {
@@ -13,6 +14,18 @@ interface AudioFileCheckerResponse {
 interface LyricLine {
   line: string;
   timestamp: string;
+}
+
+interface SongWithLyrics {
+  id: string;
+  name: string;
+  current_time: number;
+  time_stamp: string;
+  lyric: {
+    start_time_ms: number;
+    words: string;
+    spotify_uri: string;
+  }[];
 }
 
 async function audioHandler(
@@ -45,10 +58,7 @@ async function speechToTextHandler(
   data: {
     text: string;
     timestamp: string;
-    posibleSongs: {
-      name: string;
-      id: string;
-    }[];
+    posibleSongs: SongWithLyrics[];
   };
   error?: string;
 }> {
@@ -61,7 +71,7 @@ async function speechToTextHandler(
   form.append("audio", blob, "audio.webm");
   form.append("start_at", startAt.toString());
   form.append("timestamp", new Date().toISOString());
-  form.append("lyric_lines", JSON.stringify(lyricLines))
+  form.append("lyric_lines", JSON.stringify(lyricLines));
   form.append("song_id", userSelectedSongId || "");
 
   return fetch(SERVER_BASE_URL + "/api/tr/", {
@@ -92,12 +102,14 @@ async function speechToTextHandler(
 function StreamAudioRecorder() {
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const [lyrics, setLyrics] = useState<LyricLine[]>([]);
-  const [possibleSongs, setPossibleSongs] = useState<{ name: string }[]>([]);
+  const [possibleSongs, setPossibleSongs] = useState<SongWithLyrics[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [recordState, setRecordState] = useState<"inactive" | "active">(
     "inactive"
   );
-  const [userSelectedSongId, setUserSelectedSongId] = useState<string | undefined>();
+  const [userSelectedSongId, setUserSelectedSongId] = useState<
+    string | undefined
+  >();
   const audioChunks = useRef<Blob[]>([]);
   const startRecording = useCallback(() => {
     if (mediaRecorder.current !== null) return;
@@ -151,7 +163,7 @@ function StreamAudioRecorder() {
       });
       audioChunks.current.splice(1, 2); // remove 2 items from index 1
     };
-  }, [lyrics, recordState]);
+  }, [lyrics, recordState, userSelectedSongId]);
 
   useEffect(() => {
     console.log("lyrics", lyrics);
@@ -168,20 +180,46 @@ function StreamAudioRecorder() {
       .forEach((track) => track.stop());
   }, []);
 
+  const lyricPlayers = useMemo(() => {
+    return possibleSongs.map((song) => ({
+      songId: song.id,
+      node: (
+        <LyricPlayer
+          key={song.id}
+          startAt={song.time_stamp}
+          startTimeMsAt={song.current_time}
+          lyrics={song.lyric.sort((a, b) => a.start_time_ms - b.start_time_ms)}
+        />
+      ),
+    }));
+  }, [possibleSongs]);
+
+  const filteredLyricPlayers = useMemo(() => {
+    return lyricPlayers.filter(
+      (lyricPlayer) => !userSelectedSongId || lyricPlayer.songId === userSelectedSongId
+    );
+  }, [lyricPlayers, userSelectedSongId]);
+
   return (
     <div>
       <div>
-        <button className=" absolute top-0 left-0" onClick={startRecording}>
+        <button className="p-2" onClick={startRecording}>
           Start
         </button>
-        <button className=" absolute top-0 right-0" onClick={stopRecording}>
+        <button className="p-2" onClick={stopRecording}>
           Stop
         </button>
         <div>
           {errorMessage && <div className=" text-red-500">{errorMessage}</div>}
         </div>
       </div>
-      <SongOptions songs={possibleSongs} selectingSongId={userSelectedSongId} setSongId={(songId) => {setUserSelectedSongId(songId) }} />
+      <SongOptions
+        songs={possibleSongs}
+        selectingSongId={userSelectedSongId}
+        setSongId={(songId) => {
+          setUserSelectedSongId(songId);
+        }}
+      />
       <div>
         {lyrics
           .sort((a, b) => {
@@ -189,11 +227,15 @@ function StreamAudioRecorder() {
             if (a.timestamp > b.timestamp) return -1;
             return 0;
           })
+          .slice(0, 5)
           .map((lyric) => (
             <div key={lyric.timestamp}>
-              {lyric.timestamp} - {lyric.line}
+              <p>{lyric.line}</p>
             </div>
           ))}
+      </div>
+      <div className="grid grid-cols-2">
+        {filteredLyricPlayers.map((l) => l.node)}
       </div>
     </div>
   );

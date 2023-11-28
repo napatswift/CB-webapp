@@ -8,14 +8,6 @@
   --background-end-rgb: 255, 255, 255;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
-}
-
 body {
   color: rgb(var(--foreground-rgb));
   background: rgb(var(--background-end-rgb));
@@ -36,3 +28,30 @@ body {
   margin: 1rem;
   font-size: 5rem;
 }
+.lyric-line {
+  font-size: 1rem;
+  transition: font-size .8s ease-in-out, opacity 0.5s ease-in-out, font-weight 0.5s ease-in-out;
+  opacity: 0.8;
+}
+
+.lyric-line.active {
+  font-weight: 700;
+  font-size: 1.25rem;
+  opacity: 1;
+}
+
+.lyric-line.active + .lyric-line
+{
+  font-weight: 700;
+  font-size: 1.2rem;
+  opacity: 0.9;
+  transition-delay: 0.1s;
+}
+
+.lyric-line:has(+ .lyric-line.active) {
+  font-weight: 600;
+  font-size: 1.1rem;
+  opacity: 0.85;
+  transition-delay: 0.1s;
+}
+
