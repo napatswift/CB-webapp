@@ -2,14 +2,7 @@
 
 import { SERVER_BASE_URL } from "@/constants";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import styled from "styled-components";
-
-interface SongAPIResponse {
-  results: {
-    song: string;
-    score: number;
-  }[];
-}
+import SongOptions from "./stream/SongOptions";
 
 interface AudioFileCheckerResponse {
   data: {
@@ -21,22 +14,6 @@ interface LyricLine {
   line: string;
   timestamp: string;
 }
-
-const SongList = styled.div`
-  display: flex;
-  gap: 0.5rem;
-`;
-
-const SongItem = styled.div`
-  padding: 0.5rem;
-  border: 1px solid #ccc;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  &:hover {
-    background-color: #ccc;
-  }
-`;
 
 async function audioHandler(
   audioChunks: Blob[]
@@ -61,13 +38,16 @@ async function audioHandler(
 
 async function speechToTextHandler(
   audioChunks: Blob[],
-  startAt: number = 0
+  lyricLines: LyricLine[],
+  startAt: number = 0,
+  userSelectedSongId?: string
 ): Promise<{
   data: {
     text: string;
     timestamp: string;
     posibleSongs: {
       name: string;
+      id: string;
     }[];
   };
   error?: string;
@@ -81,6 +61,8 @@ async function speechToTextHandler(
   form.append("audio", blob, "audio.webm");
   form.append("start_at", startAt.toString());
   form.append("timestamp", new Date().toISOString());
+  form.append("lyric_lines", JSON.stringify(lyricLines))
+  form.append("song_id", userSelectedSongId || "");
 
   return fetch(SERVER_BASE_URL + "/api/tr/", {
     method: "POST",
@@ -115,6 +97,7 @@ function StreamAudioRecorder() {
   const [recordState, setRecordState] = useState<"inactive" | "active">(
     "inactive"
   );
+  const [userSelectedSongId, setUserSelectedSongId] = useState<string | undefined>();
   const audioChunks = useRef<Blob[]>([]);
   const startRecording = useCallback(() => {
     if (mediaRecorder.current !== null) return;
@@ -145,12 +128,12 @@ function StreamAudioRecorder() {
       audioChunks.current.push(e.data);
 
       if (audioChunks.current.length < 4) return;
+      const currChunk = audioChunks.current;
       speechToTextHandler(
-        [
-          audioChunks.current[0],
-          ...audioChunks.current.slice(audioChunks.current.length - 3),
-        ],
-        2
+        [currChunk[0], ...currChunk.slice(currChunk.length - 3)],
+        lyrics.slice(Math.max(0, lyrics.length - 5)),
+        2,
+        userSelectedSongId
       ).then((resp) => {
         if (resp.error) {
           setErrorMessage(() => resp.error || "");
@@ -162,13 +145,13 @@ function StreamAudioRecorder() {
             { line: resp.data.text, timestamp: resp.data.timestamp },
           ]);
         }
-        if (resp.data.posibleSongs) {
+        if (resp.data.posibleSongs && resp.data.posibleSongs.length) {
           setPossibleSongs(resp.data.posibleSongs);
         }
       });
       audioChunks.current.splice(1, 2); // remove 2 items from index 1
     };
-  }, [recordState]);
+  }, [lyrics, recordState]);
 
   useEffect(() => {
     console.log("lyrics", lyrics);
@@ -198,11 +181,7 @@ function StreamAudioRecorder() {
           {errorMessage && <div className=" text-red-500">{errorMessage}</div>}
         </div>
       </div>
-      <SongList>
-        {possibleSongs.map((song, i) => (
-          <SongItem key={i}>{song.name}</SongItem>
-        ))}
-      </SongList>
+      <SongOptions songs={possibleSongs} selectingSongId={userSelectedSongId} setSongId={(songId) => {setUserSelectedSongId(songId) }} />
       <div>
         {lyrics
           .sort((a, b) => {
@@ -210,8 +189,8 @@ function StreamAudioRecorder() {
             if (a.timestamp > b.timestamp) return -1;
             return 0;
           })
-          .map((lyric, i) => (
-            <div key={i}>
+          .map((lyric) => (
+            <div key={lyric.timestamp}>
               {lyric.timestamp} - {lyric.line}
             </div>
           ))}
